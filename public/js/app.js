@@ -1,4 +1,4 @@
-(function ($,_) {
+(function ($,_,FastClick) {
 	"use strict";
 	
 	_.templateSettings = {
@@ -328,8 +328,10 @@
 		$(window.saveButton).click(Breezeread.save);
 		$(window.settingsButton).click(Breezeread.settings);
 		$(window.listButton).click(Breezeread.list);
+
+		new FastClick(document.body);
 	});
-}($,_));
+}($,_,FastClick));
 
 /*
 Mode
