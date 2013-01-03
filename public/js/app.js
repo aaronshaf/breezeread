@@ -21,12 +21,13 @@ $(function() {
 
 			var articles = window.localStorage.getItem('articles');
 			if(articles) {
-				articles = _.uniq(JSON.parse(articles));
+				articles = JSON.parse(articles);
 			} else {
 				articles = [];
 			}
 
 			articles.push(article._id);
+			articles = _.uniq(articles);
 			window.localStorage.setItem('articles',JSON.stringify(articles));
 
 			return article;
