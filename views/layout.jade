@@ -2,7 +2,7 @@ doctype 5
 html
 	head
 		title= title
-		meta(name="viewport",content="width=device-width")
+		meta(name="viewport",content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no")
 		meta(name="description",content="Concentrated reading.")
 		link(rel='stylesheet', href='/libs/bootstrap/css/bootstrap.css')
 		link(rel='stylesheet', href='/libs/font-awesome/css/font-awesome.css')
@@ -11,8 +11,8 @@ html
 		script
 			document.write('<script src=/libs/' + ('__proto__' in {} ? 'zepto' : 'jquery') + '.js><\/script>')
 		script(src='/libs/underscore.js')
-		script(src='/libs/q.js')
 		script(src='/libs/fastclick.js')
+		script(src='/libs/q.js')
 		script(src='/js/app.js')
 	body	
 		#navbar.navbar.navbar-fixed-top
