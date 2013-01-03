@@ -141,7 +141,7 @@ $(function() {
 				article = Articles.findOne(article);
 				var words = article.content.split(' ');
 				var preview = words.slice(0,100);
-				var previewString = preview.join(' ');
+				var previewString = preview.join(' ').htmlEntities();
 				if(preview.length < words.length) {
 					previewString += '...';
 				}
@@ -184,7 +184,7 @@ $(function() {
 
 			var progress = function() {
 				$(window.progressInner).css({
-					width: (100 * (article.progress / lines.length)) + '%'
+					width: (100 * ((article.progress + 1) / lines.length)) + '%'
 				});
 			};
 			progress();
@@ -193,7 +193,7 @@ $(function() {
 			$(window).on('resize',center);
 			center();
 
-			$(window.concentrated).html(lines[0]);
+			$(window.concentrated).html(lines[article.progress]);
 
 			$(document).off('keydown');
 			$(document).on('keydown',function(e) {
@@ -205,6 +205,7 @@ $(function() {
 					$(window.concentrated).html(lines[article.progress]);
 					Articles.save(article);
 					progress();
+					return false;
 				} else if(_.indexOf([37,38,74],e.keyCode) !== -1) {
 					article.progress--;
 					if(article.progress < 0) {
@@ -213,9 +214,11 @@ $(function() {
 					$(window.concentrated).html(lines[article.progress]);
 					Articles.save(article);
 					progress();
+					return false;
 				} else if(_.indexOf([8],e.keyCode) !== -1) {
 					Articles.remove(article._id);
 					Breezeread.list();
+					return false;
 				}
 			});
 		},
@@ -327,3 +330,7 @@ Font size
 Columns*
 Width*
 */
+
+String.prototype.htmlEntities = function () {
+	return this.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+};
