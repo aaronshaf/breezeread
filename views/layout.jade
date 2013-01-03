@@ -8,8 +8,8 @@ html
 		link(rel='stylesheet', href='/libs/font-awesome/css/font-awesome.css')
 		link(rel='stylesheet', href='/css/styles.css')
 		link(rel='stylesheet', href='http://fonts.googleapis.com/css?family=Cinzel')
-		script(src='/libs/jquery.js')
-		script(src='/libs/bootstrap/js/bootstrap.js')
+		script
+			document.write('<script src=/libs/' + ('__proto__' in {} ? 'zepto' : 'jquery') + '.js><\/script>')
 		script(src='/libs/underscore.js')
 		script(src='/libs/q.js')
 		script(src='/libs/fastclick.js')
@@ -19,18 +19,18 @@ html
 			.navbar-inner
 				.pull-left
 					ul.nav
-						li#listButton
+						li#listButton(title="List articles")
 							a(href="#")
 								i.icon-tasks
-						li#settingsButton
+						li#settingsButton(title="Change settings")
 							a(href="#")
 								i.icon-font
-						li#loginButton.hide
+						li#loginButton.hide(title="Login with Twitter")
 							a(href="#")
 								i.icon-user
 				.pull-right
 					ul.nav
-						li#addButton.hide
+						li#addButton.hide(title="Add article")
 							a(href="#")
 								i.icon-plus
 						li#saveButton.hide

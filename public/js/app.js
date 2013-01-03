@@ -329,7 +329,7 @@
 		$(window.settingsButton).click(Breezeread.settings);
 		$(window.listButton).click(Breezeread.list);
 	});
-}(jQuery,_));
+}($,_));
 
 /*
 Mode
