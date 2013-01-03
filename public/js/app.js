@@ -152,10 +152,13 @@
 					if(preview.length < words.length) {
 						previewString += '...';
 					}
-					var tr = tbody.append(template({preview:previewString}));
+					tr = $(template({preview:previewString}));
+					tr.data('article_id',article._id);
+					tr.off('click');
 					tr.on('click',function() {
-						Breezeread.read(article._id);
+						Breezeread.read($(this).data('article_id'));
 					});
+					var tr = tbody.append(tr);
 				});
 				return false;
 			},
