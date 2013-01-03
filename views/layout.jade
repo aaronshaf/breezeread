@@ -1,0 +1,68 @@
+doctype 5
+html
+	head
+		title= title
+		meta(name="viewport",content="width=device-width")
+		meta(name="description",content="Concentrated reading.")
+		link(rel='stylesheet', href='/libs/bootstrap/css/bootstrap.css')
+		link(rel='stylesheet', href='/libs/font-awesome/css/font-awesome.css')
+		link(rel='stylesheet', href='/css/styles.css')
+		script(src='/libs/zepto.js')
+		script(src='/libs/underscore.js')
+		script(src='/libs/q.js')
+		script(src='/libs/fastclick.js')
+		script(src='/js/app.js')
+	body	
+		#navbar.navbar.navbar-fixed-top
+			.navbar-inner
+				.pull-left
+					ul.nav
+						li#listButton
+							a(href="#")
+								i.icon-tasks
+						li#settingsButton
+							a(href="#")
+								i.icon-font
+						li#loginButton.hide
+							a(href="#")
+								i.icon-user
+				.pull-right
+					ul.nav
+						li#addButton.hide
+							a(href="#")
+								i.icon-plus
+						li#saveButton.hide
+							form.navbar-form
+								a.btn.btn-primary(href="#")
+									i.icon-save
+									|  Save
+		.container-fluid
+			.row-fluid(style="margin-top: 60px;")
+				.span12
+					.view.hide#settingsView
+						div
+							a Continuous
+							a Columned
+							a Concentrated
+						h3 Size
+						div
+							input(type="range")
+						h3 Font
+						div
+							a test
+					.view.hide#addView
+						textarea#newArticleContent(autofocus,placeholder="Paste article here").input-block-level
+					.view.hide#listView
+						table.table.table-striped.table-hover
+							tbody
+						script(type="text/html")#articleListingTemplate
+							tr
+								td
+									{{preview}}			
+					.view.hide#readView
+						#columns.readMode
+						#continuous.readMode
+						#concentrated.readMode
+							| Read view
+						#progress
+							#progressInner
