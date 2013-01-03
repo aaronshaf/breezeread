@@ -205,25 +205,35 @@
 
 				$(window.concentrated).html(lines[article.progress]);
 
+				var previous = function() {
+					article.progress--;
+					if(article.progress < 0) {
+						article.progress = 0;
+					}
+					$(window.concentrated).html(lines[article.progress]);
+					Articles.save(article);
+					progress();
+				};
+
+				var next = function() {
+					article.progress++;
+					if(article.progress > lines.length - 1) {
+						article.progress = lines.length - 1;
+					}
+					$(window.concentrated).html(lines[article.progress]);
+					Articles.save(article);
+					progress();
+				};
+
 				$(document).off('keydown');
+				$(document).off('tap');
+				$(document).on('tap',next);
 				$(document).on('keydown',function(e) {
 					if(_.indexOf([39,40,75],e.keyCode) !== -1) {
-						article.progress++;
-						if(article.progress > lines.length - 1) {
-							article.progress = lines.length - 1;
-						}
-						$(window.concentrated).html(lines[article.progress]);
-						Articles.save(article);
-						progress();
+						next();
 						return false;
 					} else if(_.indexOf([37,38,74],e.keyCode) !== -1) {
-						article.progress--;
-						if(article.progress < 0) {
-							article.progress = 0;
-						}
-						$(window.concentrated).html(lines[article.progress]);
-						Articles.save(article);
-						progress();
+						previous();
 						return false;
 					} else if(_.indexOf([8],e.keyCode) !== -1) {
 						Articles.remove(article._id);
