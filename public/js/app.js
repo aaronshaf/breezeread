@@ -15,7 +15,8 @@ $(function() {
 			if(!article.progress) {
 				article.progress = 0;
 			}
-			article.content = article.content.replace(/\n/g, " ");
+			article.content = article.content.replace(/\n/g, " "); //Remove line breaks
+			artice.content = article.content.replace(/ +(?= )/g,''); //Remove multiple spaces
 			window.localStorage.setItem(article._id,JSON.stringify(article));
 			//$.post('/a/' + article._id,article);
 
