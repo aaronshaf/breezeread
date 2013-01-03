@@ -9,11 +9,6 @@ var Base = {
 	findOne: function(query) {
 		var defer = Q.defer();
 
-		if(!this.collection) {
-			defer.reject('Collection name not set.');
-			return defer.promise;
-		}
-
 		query = mongo.query(query);
 
 		mongo.collection(this.collection).then(function(collection) {
@@ -31,11 +26,6 @@ var Base = {
 
 	remove: function(query) {
 		var defer = Q.defer();
-
-		if(!this.collection) {
-			defer.reject('Collection name not set.');
-			return defer.promise;
-		}
 
 		if(typeof query._id === 'string') {
 			query._id = ObjectID(query._id);
@@ -56,10 +46,7 @@ var Base = {
 
 	find: function(query, options) {
 		var defer = Q.defer();
-		if(!this.collection) {
-			defer.reject('Collection name not set.');
-			return defer.promise;
-		}
+
 		query = query || {};
 		query = mongo.query(query);
 
@@ -86,8 +73,6 @@ var Base = {
 	save: function(data) {
 		var defer = Q.defer();
 		var _id;
-
-		data = this.prepare(data);
 
 		if (data._id) {
 			_id = ObjectID(data._id);
