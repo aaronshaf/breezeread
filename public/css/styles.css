@@ -17,10 +17,9 @@ textarea,textarea:focus {
 
 #concentrated {
 	text-align: center;
-	font-size: 1.3em;
 	position: absolute;
 	width: 100%;
-	left: 0;
+	vertical-align: middle;
 }
 
 tr {
@@ -40,4 +39,17 @@ tr {
 	width: 50%;
 	height: 2px;
 	opacity: .6;
+}
+
+.fontFamily {
+	opacity: .4;
+}
+
+.fontFamily:hover {
+	opacity: .85;
+	cursor: pointer;
+}
+
+.fontFamily.active {
+	opacity: 1;
 }

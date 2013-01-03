@@ -7,6 +7,7 @@ html
 		link(rel='stylesheet', href='/libs/bootstrap/css/bootstrap.css')
 		link(rel='stylesheet', href='/libs/font-awesome/css/font-awesome.css')
 		link(rel='stylesheet', href='/css/styles.css')
+		link(rel='stylesheet', href='http://fonts.googleapis.com/css?family=Cinzel')
 		script(src='/libs/zepto.js')
 		script(src='/libs/underscore.js')
 		script(src='/libs/q.js')
@@ -40,16 +41,19 @@ html
 			.row-fluid(style="margin-top: 60px;")
 				.span12
 					.view.hide#settingsView
-						div
+						div.hide
 							a Continuous
 							a Columned
 							a Concentrated
-						h3 Size
-						div
-							input(type="range")
-						h3 Font
-						div
-							a test
+						div(style="margin-bottom: 12px;")
+							input#fontSize(min=12,max=48,step=.5,type="range",style="min-width: 300px;max-width: 400px;width:40%;")
+						#fontFamilies
+							.fontFamily.active(style="font-family: 'Arial', sans-serif")
+								span 
+							.fontFamily(style="font-family: 'Times', serif")
+								span The quick brown fox jumps over the lazy dog.
+							.fontFamily(style="font-family: ")
+								span The quick brown fox jumps over the lazy dog.
 					.view.hide#addView
 						textarea#newArticleContent(autofocus,placeholder="Paste article here").input-block-level
 					.view.hide#listView
@@ -63,6 +67,5 @@ html
 						#columns.readMode
 						#continuous.readMode
 						#concentrated.readMode
-							| Read view
 						#progress
 							#progressInner

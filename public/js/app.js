@@ -1,11 +1,52 @@
- "use strict";
-
  _.templateSettings = {
 	interpolate : /\{\{(.+?)\}\}/g
 };
 
 $(function() {
 	var is_touch_device = 'ontouchstart' in document.documentElement;
+
+	var fontSize = localStorage.getItem('fontSize');
+	if(fontSize) {
+		fontSize = JSON.parse(fontSize);
+	} else {
+		fontSize = 24;
+	}
+	var fontFamilies = [
+		"'Calibri', Arial', sans-serif",
+		"'Cambria', 'Times', serif",
+		"'Cinzel', cursive"
+	];
+	var fontFamily = localStorage.getItem('fontFamily');
+	if(!fontFamily) {
+		fontFamily = fontFamilies[0];
+	}
+
+	var saveFont = function() {
+		localStorage.setItem('fontSize',fontSize);
+		localStorage.setItem('fontFamily',fontFamily);
+	};
+	saveFont();
+
+	var center = function() {
+		var top = ($(window).height() / 2) - ($(window.concentrated).height() / 2);
+		$(window.concentrated).css({
+			//top: $(window.navbar).height() + (($(window).height() - $(window.navbar).height()) / 2) - $(window.concentrated).height() / 2
+			top: top + 'px'
+		});
+	};
+
+	var updateFont = function() {
+		$(window.fontFamilies).css({
+			fontSize: fontSize + 'px',
+			lineHeight: (fontSize * 1.7) + 'px'
+		});
+		$(window.readView).css({
+			fontSize: fontSize + 'px',
+			fontFamily: fontFamily
+		});
+		center();
+	};
+	updateFont();
 
 	var Articles = {
 		save: function(article) {
@@ -16,7 +57,7 @@ $(function() {
 				article.progress = 0;
 			}
 			article.content = article.content.replace(/\n/g, " "); //Remove line breaks
-			artice.content = article.content.replace(/ +(?= )/g,''); //Remove multiple spaces
+			article.content = article.content.replace(/ +(?= )/g,''); //Remove multiple spaces
 			window.localStorage.setItem(article._id,JSON.stringify(article));
 			//$.post('/a/' + article._id,article);
 
@@ -76,7 +117,7 @@ $(function() {
 		initialize: function() {
 			var articles = Articles.find();
 			if(articles.length) {
-				this.list();	
+				this.list();
 			} else {
 				this.add();
 			}
@@ -97,7 +138,7 @@ $(function() {
 			tbody.empty();
 			var template = _.template($(window.articleListingTemplate).html());
 			articles.forEach(function(article) {
-				var article = Articles.findOne(article);
+				article = Articles.findOne(article);
 				var words = article.content.split(' ');
 				var preview = words.slice(0,100);
 				var previewString = preview.join(' ');
@@ -140,12 +181,6 @@ $(function() {
 
 			$('.readMode').hide();
 			$(window.concentrated).show();
-
-			var center = function() {
-				$(window.concentrated).css({
-					top: $(window.navbar).height() + (($(window).height() - $(window.navbar).height()) / 2) - $(window.concentrated).height() / 2
-				});
-			};
 
 			var progress = function() {
 				$(window.progressInner).css({
@@ -203,6 +238,32 @@ $(function() {
 			$('.view').hide();
 			$(window.settingsView).show();
 
+			$(window.fontFamilies).empty();
+			fontFamilies.forEach(function(_fontFamily) {
+				var div = $('<div>The quick brown fox jumps over the lazy dog.</div>');
+				div.addClass('fontFamily');
+				div.css({fontFamily: _fontFamily});
+				div.data('fontFamily',_fontFamily);
+				div.on('click',function() {
+					fontFamily = $(this).data('fontFamily');
+					saveFont();
+					$('.fontFamily.active').removeClass('active');
+					$(this).addClass('active');
+					updateFont();
+				});
+				if(fontFamily === _fontFamily) {
+					div.addClass('active');
+				}
+				$(window.fontFamilies).append(div);
+			});
+
+			$(window.fontSize).on('input',function() {
+				fontSize = parseFloat($(this).val());
+				updateFont();
+				saveFont();
+			});
+			$(window.fontSize).val(fontSize);
+			updateFont();
 		},
 
 		add: function() {
