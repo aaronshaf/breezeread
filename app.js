@@ -13,21 +13,9 @@ app.configure(function(){
 	app.set('view engine', 'jade');
 	app.use(nowww());
 	//app.use(express.favicon());
-
 	app.use(express.bodyParser());
 	app.use(express.methodOverride());
 	app.use(express.static(path.join(__dirname, 'public')));
-
-	app.get('/*', function(req, res, next) {
-		next();
-		return;
-		if (req.headers.host.match(/^www/) === null ) {
-			res.redirect('http://' + req.headers.host.replace(/^www\./, '') + req.url);
-		} else {
-			next();
-		}
-	});
-
 	app.use(app.router);
 });
 
