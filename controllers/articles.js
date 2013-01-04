@@ -8,7 +8,7 @@ var ArticlesController = {
 
 	index: function(req, res) {
 		res.render('articles/view', {
-			title: 'Breezeread'
+			title: 'Breezeread - Concentrated reading'
 		});	
 	},
 
