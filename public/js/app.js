@@ -65,6 +65,7 @@
 				}
 				article.content = article.content.replace(/\n/g, " "); //Remove line breaks
 				article.content = article.content.replace(/ +(?= )/g,''); //Remove multiple spaces
+				article.content = article.content.replace(/(<([^>]+)>)/ig,""); //Remove tags
 				window.localStorage.setItem(article._id,JSON.stringify(article));
 				//$.post('/a/' + article._id,article);
 
