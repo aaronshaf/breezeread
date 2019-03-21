@@ -1,6 +1,7 @@
 import styled from "@emotion/styled/macro";
 
 export const Line = styled.div`
+  white-space: nowrap;
   margin-left: 8px;
   padding-left: 24px;
   pointer-events: fill;
@@ -9,6 +10,9 @@ export const Line = styled.div`
   .mouse-mode &:hover:not(.active) {
     color: black;
     cursor: pointer;
+  }
+  .all-mode &:hover:not(.active) span {
+    background-color: #ffff99;
   }
   & span {
     padding: 3px 4px;
@@ -89,6 +93,8 @@ export const ShowcasedText = styled.div`
   columns: 12em;
   height: 100%;
   column-gap: 0px;
+  column-width: 20rem;
+  flex: 1;
 `;
 
 export const Controls = styled.div`
