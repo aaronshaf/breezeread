@@ -11,9 +11,6 @@ export const Line = styled.div`
     color: black;
     cursor: pointer;
   }
-  .all-mode &:hover:not(.active) span {
-    background-color: #ffff99;
-  }
   & span {
     padding: 3px 4px;
   }
