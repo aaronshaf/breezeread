@@ -94,6 +94,8 @@ export const ShowcasedText = styled.div`
   height: 100%;
   column-gap: 0px;
   column-width: 20rem;
+  -moz-column-fill: auto;
+  column-fill: auto;
   flex: 1;
 `;
 
