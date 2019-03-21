@@ -148,6 +148,7 @@ class Breezeread extends Component {
   };
 
   onClear = () => {
+    localStorage.text = "";
     this.setState(
       {
         currentLine: 0,
