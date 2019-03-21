@@ -69,6 +69,10 @@ export const Desk = styled.div`
   padding-right: 32px;
   padding-bottom: 32px;
   line-height: 1.4rem;
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
 `;
 
 export const Progress = styled.progress`
