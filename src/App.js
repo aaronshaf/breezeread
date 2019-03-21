@@ -79,7 +79,7 @@ class Breezeread extends Component {
       this.handleNext();
     } else if (event.key === "ArrowRight") {
       this.reveal();
-    } else if (event.key === "Delete") {
+    } else if (event.key === "Backspace") {
       this.onClear();
     } else if (event.key === "Escape") {
       this.setState({ mode: this.state.mode !== "all" ? "all" : "keyboard" });
