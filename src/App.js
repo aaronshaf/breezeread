@@ -27,7 +27,7 @@ const prepare = text =>
     .reduce(wrap, [])
     .join("\n");
 
-class Me_ory extends Component {
+class Breezeread extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -227,4 +227,4 @@ class Me_ory extends Component {
   }
 }
 
-export default Me_ory;
+export default Breezeread;
