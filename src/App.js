@@ -12,6 +12,8 @@ import {
 } from "./styled-components.js";
 import wrapText from "wrap-text";
 
+const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
 const wrap = (state, line) => state.concat(wrapText(line, 40).split("\n"));
 
 const htmlEntities = str =>
@@ -62,11 +64,18 @@ class Breezeread extends Component {
         bounding.bottom <= window.innerHeight;
       if (isInViewport === false) {
         requestAnimationFrame(() => {
-          activeElement.scrollIntoView({
-            behavior: "smooth",
-            block: this.state.lastAction === "next" ? "start" : "end",
-            inline: this.state.lastAction === "next" ? "start" : "end"
-          });
+          if (isSafari) {
+            activeElement.scrollIntoView({
+              block: this.state.lastAction === "next" ? "start" : "end",
+              inline: this.state.lastAction === "next" ? "start" : "end"
+            });
+          } else {
+            activeElement.scrollIntoView({
+              behavior: "smooth",
+              block: this.state.lastAction === "next" ? "start" : "end",
+              inline: this.state.lastAction === "next" ? "start" : "end"
+            });
+          }
         });
       }
     }
