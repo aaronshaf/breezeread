@@ -6,7 +6,15 @@ export const Line = styled.div`
   padding-left: 24px;
   pointer-events: fill;
   min-height: 1.4rem;
-  color: ${({ current }) => (current ? "black" : "transparent")};
+  &:not(.active) {
+    color: transparent;
+  }
+  &.active {
+    color: black;
+  }
+  .all-mode & {
+    color: black;
+  }
   .mouse-mode &:hover:not(.active) {
     color: black;
     cursor: pointer;

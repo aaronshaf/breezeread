@@ -65,10 +65,11 @@ class Breezeread extends Component {
       if (isInViewport === false) {
         requestAnimationFrame(() => {
           if (isSafari) {
-            activeElement.scrollIntoView({
-              block: this.state.lastAction === "next" ? "start" : "end",
-              inline: this.state.lastAction === "next" ? "start" : "end"
-            });
+            if (activeElement.scrollIntoViewIfNeeded) {
+              activeElement.scrollIntoViewIfNeeded();
+            } else {
+              activeElement.scrollIntoView();
+            }
           } else {
             activeElement.scrollIntoView({
               behavior: "smooth",
@@ -190,9 +191,6 @@ class Breezeread extends Component {
       return (
         <Line
           className={index === this.state.currentLine && "active"}
-          current={
-            this.state.mode === "all" || index === this.state.currentLine
-          }
           key={index}
           onClick={() => this.selectLine(index)}
         >
