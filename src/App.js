@@ -58,10 +58,7 @@ class Breezeread extends Component {
     if (activeElement) {
       const bounding = activeElement.getBoundingClientRect();
       const isInViewport =
-        bounding.top >= 0 &&
-        bounding.left >= 0 &&
-        bounding.right <= window.innerWidth &&
-        bounding.bottom <= window.innerHeight;
+        bounding.left >= 0 && bounding.right <= window.innerWidth;
       if (isInViewport === false) {
         requestAnimationFrame(() => {
           if (isSafari) {
@@ -202,7 +199,7 @@ class Breezeread extends Component {
         <Line
           className={index === this.state.currentLine && "active"}
           key={index}
-          onClick={() => this.selectLine(index)}
+          onClick={() => line.length && this.selectLine(index)}
         >
           <span>{line}</span>
         </Line>
