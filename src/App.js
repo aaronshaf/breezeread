@@ -34,7 +34,7 @@ class Breezeread extends Component {
     super(props);
     this.state = {
       lastAction: "next",
-      mode: "keyboard",
+      mode: "all",
       showInputForm: localStorage.text == null,
       input: prepare(localStorage.text || "").split("\n"),
       currentLine: parseInt(sessionStorage.currentLine, 10) || 0,

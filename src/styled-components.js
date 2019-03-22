@@ -3,7 +3,7 @@ import styled from "@emotion/styled/macro";
 export const Line = styled.div`
   white-space: nowrap;
   margin-left: 8px;
-  padding-left: 24px;
+  padding-right: 24px;
   pointer-events: fill;
   min-height: 1.4rem;
   &:not(.active) {
@@ -70,10 +70,8 @@ export const InputText = styled.textarea`
 export const Desk = styled.div`
   display: flex;
   flex: 1;
-  padding-top: 32px;
-  padding-right: 32px;
-  padding-bottom: 32px;
   line-height: 1.4rem;
+  padding: 24px;
   position: absolute;
   left: 0;
   top: 0;
@@ -103,9 +101,8 @@ export const ShowcasedText = styled.div`
   height: 100%;
   column-gap: 0px;
   column-width: 20rem;
-  -moz-column-fill: auto;
-  column-fill: auto;
   flex: 1;
+  column-fill: auto;
 `;
 
 export const Controls = styled.div`
