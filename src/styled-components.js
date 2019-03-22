@@ -61,6 +61,10 @@ export const SaveTextButton = styled.button`
 `;
 SaveTextButton.defaultProps = { type: "submit" };
 
+export const Instructions = styled.pre`
+  line-height: 1.4rem;
+`;
+
 export const InputText = styled.textarea`
   flex: 1;
   padding: 12px;

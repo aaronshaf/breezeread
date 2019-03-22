@@ -4,6 +4,7 @@ import {
   Desk,
   // HiddenWord,
   Line,
+  Instructions,
   InputForm,
   InputText,
   Main,
@@ -225,6 +226,13 @@ class Breezeread extends Component {
                 ref={this.setInputRef}
               />
               <SaveTextButton>Save</SaveTextButton>
+              <Instructions>
+                {`Save text: shift-enter
+Traverse forward: j or up arrow
+Traverse backward: k or down arrow
+Clear text: Delete
+Toggle modes: Escape`}
+              </Instructions>
             </InputForm>
           )}
           {this.state.showInputForm === false && (
