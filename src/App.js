@@ -16,14 +16,8 @@ const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
 const wrap = (state, line) => state.concat(wrapText(line, 40).split("\n"));
 
-const htmlEntities = str =>
-  str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-
 const prepare = text =>
-  htmlEntities(text)
+  text
     .trim()
     .split("\n")
     .reduce(wrap, [])
@@ -35,7 +29,8 @@ class Breezeread extends Component {
     this.state = {
       lastAction: "next",
       mode: "all",
-      showInputForm: localStorage.text == null,
+      showInputForm:
+        localStorage.text == null || localStorage.text.trim().length < 2,
       input: prepare(localStorage.text || "").split("\n"),
       currentLine: parseInt(sessionStorage.currentLine, 10) || 0,
       isRevealing: false
@@ -95,7 +90,7 @@ class Breezeread extends Component {
 
   handleSubmit = event => {
     event.preventDefault();
-    if (this.inputRef.value.length === 0) {
+    if (this.inputRef.value.trim().length === 0) {
       return;
     }
     const text = prepare(this.inputRef.value);
