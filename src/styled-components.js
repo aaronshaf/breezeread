@@ -2,8 +2,7 @@ import styled from "@emotion/styled/macro";
 
 export const Line = styled.div`
   white-space: nowrap;
-  margin-left: 8px;
-  padding-right: 24px;
+  padding-right: 20px;
   pointer-events: fill;
   min-height: 1.4rem;
   &:not(.active) {
@@ -71,11 +70,13 @@ export const Desk = styled.div`
   display: flex;
   flex: 1;
   line-height: 1.4rem;
-  padding: 24px;
+  padding: 20px 24px 20px 24px;
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
+  text-align: justify;
+  text-justify: inter-word;
 `;
 
 export const Progress = styled.progress`

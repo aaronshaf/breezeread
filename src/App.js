@@ -101,14 +101,16 @@ class Breezeread extends Component {
     if (this.inputRef.value.length === 0) {
       return;
     }
-
     const text = prepare(this.inputRef.value);
     localStorage.text = text;
+    sessionStorage.currentLine = 0;
     this.setState({
+      lastAction: "next",
       showInputForm: false,
-      mode: "keyboard",
+      mode: "all",
       input: text.split("\n"),
-      currentLine: 0
+      currentLine: 0,
+      isRevealing: false
     });
   };
 
@@ -159,6 +161,7 @@ class Breezeread extends Component {
 
   onClear = () => {
     localStorage.text = "";
+    sessionStorage.currentLine = 0;
     this.setState(
       {
         currentLine: 0,
@@ -183,6 +186,13 @@ class Breezeread extends Component {
   handleMouseMove = () => {
     if (this.state.mode === "keyboard") {
       this.setState({ mode: "mouse" });
+    }
+  };
+
+  handleInputTextKeyDown = event => {
+    const isShiftEnter = event.shiftKey && event.key === "Enter";
+    if (isShiftEnter) {
+      this.handleSubmit(event);
     }
   };
 
@@ -218,7 +228,10 @@ class Breezeread extends Component {
         <Main onMouseMove={() => this.handleMouseMove()}>
           {this.state.showInputForm && (
             <InputForm onSubmit={this.handleSubmit}>
-              <InputText ref={this.setInputRef} />
+              <InputText
+                onKeyDown={this.handleInputTextKeyDown}
+                ref={this.setInputRef}
+              />
               <SaveTextButton>Save</SaveTextButton>
             </InputForm>
           )}
