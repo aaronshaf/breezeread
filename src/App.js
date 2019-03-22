@@ -58,11 +58,7 @@ class Breezeread extends Component {
       if (isInViewport === false) {
         requestAnimationFrame(() => {
           if (isSafari) {
-            if (activeElement.scrollIntoViewIfNeeded) {
-              activeElement.scrollIntoViewIfNeeded();
-            } else {
-              activeElement.scrollIntoView();
-            }
+            document.body.scrollLeft = activeElement.offsetLeft;
           } else {
             activeElement.scrollIntoView({
               behavior: "smooth",
