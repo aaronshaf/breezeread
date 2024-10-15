@@ -47,6 +47,7 @@ class Breezeread extends LitElement {
       display: flex;
       flex: 1;
       flex-direction: column;
+      font-family: "Georgia, serif";
     }
 
     .input-form {
@@ -86,7 +87,7 @@ class Breezeread extends LitElement {
     }
 
     .showcased-text {
-      font-size: 0.9rem;
+      font-size: 1.1rem;
       columns: 12em;
       height: 100%;
       column-gap: 0px;
@@ -100,7 +101,7 @@ class Breezeread extends LitElement {
       padding-left: 20px;
       padding-right: 12px;
       pointer-events: fill;
-      min-height: 1.4rem;
+      min-height: 1.55rem;
     }
 
     .line:not(.active) {
