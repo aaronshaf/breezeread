@@ -27,6 +27,14 @@ function wrapText(input, width) {
   return res.join("\n");
 }
 
+const fonts = [
+  "Georgia, serif",
+  "Merriweather, serif",
+  "Lora, serif",
+  "Lexend, sans-serif",
+  "Atkinson Hyperlegible, sans-serif",
+];
+
 class Breezeread extends LitElement {
   static styles = css`
     :host {
@@ -47,7 +55,6 @@ class Breezeread extends LitElement {
       display: flex;
       flex: 1;
       flex-direction: column;
-      font-family: "Georgia, serif";
     }
 
     .input-form {
@@ -141,6 +148,8 @@ class Breezeread extends LitElement {
     input: { type: Array },
     currentLine: { type: Number },
     isRevealing: { type: Boolean },
+    fontIndex: { type: Number },
+    lastKeyPressed: { type: String },
   };
 
   constructor() {
@@ -152,8 +161,11 @@ class Breezeread extends LitElement {
     this.input = this.prepare(localStorage.text || "").split("\n");
     this.currentLine = parseInt(sessionStorage.currentLine, 10) || 0;
     this.isRevealing = false;
+    this.fontIndex = parseInt(localStorage.getItem("fontIndex"), 10) || 0;
+    document.body.style.fontFamily = fonts[this.fontIndex];
 
     this.handleKeyPress = this.handleKeyPress.bind(this);
+    this.lastKeyPressed = null;
   }
 
   connectedCallback() {
@@ -187,13 +199,28 @@ class Breezeread extends LitElement {
       this.handlePrevious();
     } else if (event.key === "j" || event.key === "ArrowDown") {
       this.handleNext();
+    } else if (event.key === "{") {
+      this.handlePreviousParagraph();
+    } else if (event.key === "}") {
+      this.handleNextParagraph();
     } else if (event.key === "ArrowRight") {
       this.reveal();
     } else if (event.key === "Backspace") {
       this.onClear();
     } else if (event.key === "Escape") {
       this.mode = this.mode !== "all" ? "all" : "keyboard";
+    } else if (event.key === "f") {
+      this.fontIndex = (this.fontIndex + 1) % fonts.length;
+      document.body.style.fontFamily = fonts[this.fontIndex];
+      localStorage.setItem("fontIndex", this.fontIndex);
+    } else if (event.key === "g") {
+      if (this.lastKeyPressed === "g") {
+        this.currentLine = 0;
+      }
+    } else if (event.key === "G") {
+      this.currentLine = this.input.length - 1;
     }
+    this.lastKeyPressed = event.key;
   }
 
   handleSubmit(event) {
@@ -242,6 +269,53 @@ class Breezeread extends LitElement {
     sessionStorage.currentLine = currentLine;
     this.lastAction = "next";
     this.currentLine = currentLine;
+    this.isRevealing = false;
+    this.mode = this.mode === "all" ? "all" : "keyboard";
+  }
+
+  handlePreviousParagraph() {
+    let currentLine = this.currentLine;
+
+    // Move upwards until an empty line is found
+    while (currentLine > 0 && this.input[currentLine - 1] !== "") {
+      currentLine--;
+    }
+
+    // Now that we're on an empty line, continue moving up until the previous paragraph's first line
+    while (currentLine > 0 && this.input[currentLine - 1] === "") {
+      currentLine--;
+    }
+
+    // Keep moving up until we're at the start of a paragraph or at the top
+    while (currentLine > 0 && this.input[currentLine - 1] !== "") {
+      currentLine--;
+    }
+
+    this.currentLine = currentLine;
+    sessionStorage.currentLine = currentLine;
+    this.lastAction = "previous-paragraph";
+    this.isRevealing = false;
+    this.mode = this.mode === "all" ? "all" : "keyboard";
+  }
+
+  handleNextParagraph() {
+    let currentLine = this.currentLine;
+    while (
+      currentLine < this.input.length - 1 &&
+      this.input[currentLine + 1] !== ""
+    ) {
+      currentLine++;
+    }
+    while (
+      currentLine < this.input.length - 1 &&
+      this.input[currentLine + 1] === ""
+    ) {
+      currentLine++;
+    }
+    currentLine++;
+    this.currentLine = currentLine;
+    sessionStorage.currentLine = currentLine;
+    this.lastAction = "next-paragraph";
     this.isRevealing = false;
     this.mode = this.mode === "all" ? "all" : "keyboard";
   }
