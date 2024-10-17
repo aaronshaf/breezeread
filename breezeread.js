@@ -300,12 +300,12 @@ class Breezeread extends LitElement {
 
   handleNextParagraph() {
     let currentLine = this.currentLine;
-    
+
     // If already at the last line, do nothing
     if (currentLine >= this.input.length - 1) {
       return;
     }
-    
+
     // Move down until an empty line is found
     while (
       currentLine < this.input.length - 1 &&
@@ -313,7 +313,7 @@ class Breezeread extends LitElement {
     ) {
       currentLine++;
     }
-  
+
     // Skip empty lines until the start of the next paragraph
     while (
       currentLine < this.input.length - 1 &&
@@ -321,12 +321,12 @@ class Breezeread extends LitElement {
     ) {
       currentLine++;
     }
-  
+
     // Move to the first line of the next paragraph
     if (currentLine < this.input.length - 1) {
       currentLine++;
     }
-  
+
     this.currentLine = currentLine;
     sessionStorage.currentLine = currentLine;
     this.lastAction = "next-paragraph";
@@ -404,6 +404,11 @@ class Breezeread extends LitElement {
                 Traverse backward: k or down arrow
                 Clear text: Delete
                 Toggle modes: Escape
+                Cycle fonts: f
+                Jump to end: G
+                Jump to beginning: gg
+                Next paragraph/block: }
+                Previous paragraph/block: {
               </pre
                   >
                 </form>
