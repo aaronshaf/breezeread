@@ -206,6 +206,7 @@ class Breezeread extends LitElement {
     } else if (event.key === "ArrowRight") {
       this.reveal();
     } else if (event.key === "Backspace") {
+      event.preventDefault();
       this.onClear();
     } else if (event.key === "Escape") {
       this.mode = this.mode !== "all" ? "all" : "keyboard";
@@ -225,10 +226,13 @@ class Breezeread extends LitElement {
 
   handleSubmit(event) {
     event.preventDefault();
-    if (this.inputRef.value.trim().length === 0) {
+
+    const textarea = this.shadowRoot.querySelector('textarea');
+
+    if (textarea.value.trim().length === 0) {
       return;
     }
-    const text = this.prepare(this.inputRef.value);
+    const text = this.prepare(textarea.value);
     localStorage.text = text;
     sessionStorage.currentLine = 0;
     this.showInputForm = false;
@@ -236,10 +240,6 @@ class Breezeread extends LitElement {
     this.input = text.split("\n");
     this.currentLine = 0;
     this.isRevealing = false;
-  }
-
-  setInputRef(node) {
-    this.inputRef = node;
   }
 
   reveal() {
@@ -335,14 +335,18 @@ class Breezeread extends LitElement {
   }
 
   onClear() {
-    localStorage.text = "";
-    sessionStorage.currentLine = 0;
-    this.currentLine = 0;
-    this.input = [];
+    // localStorage.text = "";
+    // sessionStorage.currentLine = 0;
+    // this.currentLine = 0;
+    // this.input = [];
     this.showInputForm = true;
     this.mode = "keyboard";
     this.updateComplete.then(() => {
-      this.shadowRoot.querySelector("textarea").focus();
+      const textarea = this.shadowRoot.querySelector('textarea');
+      if (textarea) {
+        // debugger
+        textarea.select();
+      }
     });
   }
 
@@ -395,7 +399,6 @@ class Breezeread extends LitElement {
                     class="input-text"
                     @keydown="${this.handleInputTextKeyDown}"
                     .value="${localStorage.text || ""}"
-                    @input="${(e) => (this.inputRef = e.target)}"
                   ></textarea>
                   <button class="save-text-button" type="submit">Save</button>
                   <pre class="instructions">
