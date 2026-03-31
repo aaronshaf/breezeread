@@ -172,19 +172,26 @@ class Breezeread extends LitElement {
 
   disconnectedCallback() {
     document.removeEventListener("keydown", this.handleKeyPress);
+    this._resizeObserver?.disconnect();
     super.disconnectedCallback();
   }
 
   firstUpdated() {
-    // Measure the actual rendered column width and re-wrap if it differs
-    // meaningfully from our CSS-computed default
+    this._measureAndRewrap();
+
+    // Re-wrap whenever the column width changes (window resize, zoom, etc.)
+    this._resizeObserver = new ResizeObserver(() => this._measureAndRewrap());
+    const desk = this.shadowRoot.querySelector(".desk");
+    if (desk) this._resizeObserver.observe(desk);
+  }
+
+  _measureAndRewrap() {
     const lineEl = this.shadowRoot.querySelector(".line");
-    if (lineEl) {
-      const actualWidth = lineEl.getBoundingClientRect().width - LINE_PADDING_PX;
-      if (actualWidth > 0 && Math.abs(actualWidth - this.columnContentWidth) > 20) {
-        this.columnContentWidth = actualWidth;
-        this.input = this._prepareLines(localStorage.text || "");
-      }
+    if (!lineEl) return;
+    const actualWidth = lineEl.getBoundingClientRect().width - LINE_PADDING_PX;
+    if (actualWidth > 0 && Math.abs(actualWidth - this.columnContentWidth) > 10) {
+      this.columnContentWidth = actualWidth;
+      this.input = this._prepareLines(localStorage.text || "");
     }
   }
 
