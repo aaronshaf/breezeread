@@ -8,6 +8,10 @@ import {
   prepareWithSegments,
   layoutWithLines,
 } from "https://esm.sh/@chenglou/pretext";
+import Hypher from "https://esm.sh/hypher";
+import enUS from "https://esm.sh/hyphenation.en-us";
+
+const hypher = new Hypher(enUS);
 
 const fonts = [
   "Georgia, serif",
@@ -31,57 +35,8 @@ const RIVER_THRESHOLD = 1.5;
 const INFEASIBLE_SPACE_RATIO = 0.4;
 const TIGHT_SPACE_RATIO = 0.65;
 
-const PREFIXES = [
-  "anti", "auto", "be", "bi", "co", "com", "con", "contra", "counter", "de",
-  "dis", "en", "em", "ex", "extra", "fore", "hyper", "il", "im", "in", "inter",
-  "intra", "ir", "macro", "mal", "micro", "mid", "mis", "mono", "multi", "non",
-  "omni", "out", "over", "para", "poly", "post", "pre", "pro", "pseudo",
-  "quasi", "re", "retro", "semi", "sub", "super", "sur", "syn", "tele", "trans",
-  "tri", "ultra", "un", "under",
-];
-
-const SUFFIXES = [
-  "able", "ible", "tion", "sion", "ment", "ness", "ous", "ious", "eous", "ful",
-  "less", "ive", "ative", "itive", "al", "ial", "ical", "ing", "ling",
-  "ed", "er", "est", "ism", "ist", "ity", "ety", "ty", "ence", "ance", "ly",
-  "fy", "ify", "ize", "ise", "ure", "ture",
-];
-
 function isSpaceSegment(text) {
   return text.trim().length === 0;
-}
-
-function hyphenateWord(word) {
-  // Don't hyphenate contractions or possessives
-  if (/['\u2019]/.test(word)) return [word];
-
-  const lower = word.toLowerCase().replace(/[.,;:!?"\u2014\u2013-]/g, "");
-  if (lower.length < 6) return [word];
-
-  for (const prefix of PREFIXES) {
-    // Only use prefixes of 3+ chars to avoid false matches (co-, de-, re-, etc.)
-    if (prefix.length < 3) continue;
-    if (lower.startsWith(prefix) && lower.length - prefix.length >= 4) {
-      return [word.slice(0, prefix.length), word.slice(prefix.length)];
-    }
-  }
-  for (const suffix of SUFFIXES) {
-    // Only use suffixes of 3+ chars
-    if (suffix.length < 3) continue;
-    if (lower.endsWith(suffix) && lower.length - suffix.length >= 4) {
-      const cut = word.length - suffix.length;
-      return [word.slice(0, cut), word.slice(cut)];
-    }
-  }
-  return [word];
-}
-
-function hyphenateParagraph(paragraph) {
-  return paragraph.split(/(\s+)/).map((token) => {
-    if (/^\s+$/.test(token)) return token;
-    const parts = hyphenateWord(token);
-    return parts.length <= 1 ? token : parts.join(SOFT_HYPHEN);
-  }).join("");
 }
 
 function getLineStats(segments, widths, candidates, from, to, hyphenWidth, normalSpaceWidth) {
@@ -477,7 +432,7 @@ class Breezeread extends LitElement {
         continue;
       }
       try {
-        const hyphenated = hyphenateParagraph(paragraph);
+        const hyphenated = hypher.hyphenateText(paragraph);
         const prepared = prepareWithSegments(hyphenated, font);
         const lines = layoutParagraphKnuthPlass(prepared, maxWidth, normalSpaceWidth, hyphenWidth);
         for (const line of lines) {
