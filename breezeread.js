@@ -3,29 +3,10 @@ import {
   html,
   LitElement,
 } from "https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js";
-
-function wrapText(input, width) {
-  width = parseInt(width) || 80;
-  var res = [],
-    cLine = "",
-    words = input.split(" ");
-
-  for (var i = 0; i < words.length; ++i) {
-    var cWord = words[i];
-    if ((cLine + cWord).length <= width) {
-      cLine += (cLine ? " " : "") + cWord;
-    } else {
-      res.push(cLine);
-      cLine = cWord;
-    }
-  }
-
-  if (cLine) {
-    res.push(cLine);
-  }
-
-  return res.join("\n");
-}
+import {
+  prepare as pretextPrepare,
+  layoutWithLines,
+} from "https://esm.sh/@chenglou/pretext";
 
 const fonts = [
   "Georgia, serif",
@@ -34,6 +15,12 @@ const fonts = [
   "Lexend, sans-serif",
   "Atkinson Hyperlegible, sans-serif",
 ];
+
+// column-width: 20rem, padding-left: 20px, padding-right: 12px
+const COLUMN_WIDTH_REM = 20;
+const LINE_PADDING_PX = 32;
+const FONT_SIZE_REM = 1.1;
+const LINE_HEIGHT_REM = 1.4;
 
 class Breezeread extends LitElement {
   static styles = css`
@@ -139,6 +126,15 @@ class Breezeread extends LitElement {
     .keyboard-mode .line {
       cursor: none;
     }
+
+    /* Drop cap for the first letter of each paragraph in all-mode */
+    .all-mode .line.paragraph-start > span::first-letter {
+      float: left;
+      font-size: 3em;
+      line-height: 0.82;
+      padding-right: 5px;
+      padding-top: 3px;
+    }
   `;
 
   static properties = {
@@ -150,6 +146,7 @@ class Breezeread extends LitElement {
     isRevealing: { type: Boolean },
     fontIndex: { type: Number },
     lastKeyPressed: { type: String },
+    columnContentWidth: { type: Number },
   };
 
   constructor() {
@@ -158,12 +155,12 @@ class Breezeread extends LitElement {
     this.mode = "all";
     this.showInputForm =
       localStorage.text == null || localStorage.text.trim().length < 2;
-    this.input = this.prepare(localStorage.text || "").split("\n");
-    this.currentLine = parseInt(sessionStorage.currentLine, 10) || 0;
-    this.isRevealing = false;
     this.fontIndex = parseInt(localStorage.getItem("fontIndex"), 10) || 0;
     document.body.style.fontFamily = fonts[this.fontIndex];
-
+    this.columnContentWidth = this._defaultColumnWidth();
+    this.input = this._prepareLines(localStorage.text || "");
+    this.currentLine = parseInt(sessionStorage.currentLine, 10) || 0;
+    this.isRevealing = false;
     this.handleKeyPress = this.handleKeyPress.bind(this);
     this.lastKeyPressed = null;
   }
@@ -176,6 +173,19 @@ class Breezeread extends LitElement {
   disconnectedCallback() {
     document.removeEventListener("keydown", this.handleKeyPress);
     super.disconnectedCallback();
+  }
+
+  firstUpdated() {
+    // Measure the actual rendered column width and re-wrap if it differs
+    // meaningfully from our CSS-computed default
+    const lineEl = this.shadowRoot.querySelector(".line");
+    if (lineEl) {
+      const actualWidth = lineEl.getBoundingClientRect().width - LINE_PADDING_PX;
+      if (actualWidth > 0 && Math.abs(actualWidth - this.columnContentWidth) > 20) {
+        this.columnContentWidth = actualWidth;
+        this.input = this._prepareLines(localStorage.text || "");
+      }
+    }
   }
 
   updated(changedProperties) {
@@ -192,6 +202,57 @@ class Breezeread extends LitElement {
         }
       }
     }
+  }
+
+  _defaultColumnWidth() {
+    const rootFontSize =
+      parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    return COLUMN_WIDTH_REM * rootFontSize - LINE_PADDING_PX;
+  }
+
+  _getFontString() {
+    const rootFontSize =
+      parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const fontSize = FONT_SIZE_REM * rootFontSize;
+    return `${fontSize}px ${fonts[this.fontIndex]}`;
+  }
+
+  _prepareLines(text) {
+    if (!text || !text.trim()) return [];
+    const font = this._getFontString();
+    const width = this.columnContentWidth || this._defaultColumnWidth();
+    const rootFontSize =
+      parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const lineHeight = LINE_HEIGHT_REM * rootFontSize;
+
+    const result = [];
+    for (const paragraph of text.trim().split("\n")) {
+      if (paragraph.trim() === "") {
+        result.push("");
+        continue;
+      }
+      try {
+        const prepared = pretextPrepare(paragraph, font);
+        const { lines } = layoutWithLines(prepared, width, lineHeight);
+        for (const line of lines) {
+          result.push(line.text ?? line);
+        }
+      } catch {
+        // Fallback: simple character-count word wrap
+        const words = paragraph.split(" ");
+        let current = "";
+        for (const word of words) {
+          if (current.length + word.length + 1 <= 40) {
+            current += (current ? " " : "") + word;
+          } else {
+            if (current) result.push(current);
+            current = word;
+          }
+        }
+        if (current) result.push(current);
+      }
+    }
+    return result;
   }
 
   handleKeyPress(event) {
@@ -214,6 +275,8 @@ class Breezeread extends LitElement {
       this.fontIndex = (this.fontIndex + 1) % fonts.length;
       document.body.style.fontFamily = fonts[this.fontIndex];
       localStorage.setItem("fontIndex", this.fontIndex);
+      // Re-wrap with new font metrics
+      this.input = this._prepareLines(localStorage.text || "");
     } else if (event.key === "g") {
       if (this.lastKeyPressed === "g") {
         this.currentLine = 0;
@@ -227,17 +290,18 @@ class Breezeread extends LitElement {
   handleSubmit(event) {
     event.preventDefault();
 
-    const textarea = this.shadowRoot.querySelector('textarea');
+    const textarea = this.shadowRoot.querySelector("textarea");
 
     if (textarea.value.trim().length === 0) {
       return;
     }
-    const text = this.prepare(textarea.value);
-    localStorage.text = text;
+    // Store original text (not pre-wrapped) so it can be re-wrapped
+    // accurately when the font or column width changes
+    localStorage.text = textarea.value;
     sessionStorage.currentLine = 0;
     this.showInputForm = false;
     this.mode = "all";
-    this.input = text.split("\n");
+    this.input = this._prepareLines(textarea.value);
     this.currentLine = 0;
     this.isRevealing = false;
   }
@@ -276,17 +340,14 @@ class Breezeread extends LitElement {
   handlePreviousParagraph() {
     let currentLine = this.currentLine;
 
-    // Move upwards until an empty line is found
     while (currentLine > 0 && this.input[currentLine - 1] !== "") {
       currentLine--;
     }
 
-    // Now that we're on an empty line, continue moving up until the previous paragraph's first line
     while (currentLine > 0 && this.input[currentLine - 1] === "") {
       currentLine--;
     }
 
-    // Keep moving up until we're at the start of a paragraph or at the top
     while (currentLine > 0 && this.input[currentLine - 1] !== "") {
       currentLine--;
     }
@@ -301,12 +362,10 @@ class Breezeread extends LitElement {
   handleNextParagraph() {
     let currentLine = this.currentLine;
 
-    // If already at the last line, do nothing
     if (currentLine >= this.input.length - 1) {
       return;
     }
 
-    // Move down until an empty line is found
     while (
       currentLine < this.input.length - 1 &&
       this.input[currentLine + 1] !== ""
@@ -314,7 +373,6 @@ class Breezeread extends LitElement {
       currentLine++;
     }
 
-    // Skip empty lines until the start of the next paragraph
     while (
       currentLine < this.input.length - 1 &&
       this.input[currentLine + 1] === ""
@@ -322,7 +380,6 @@ class Breezeread extends LitElement {
       currentLine++;
     }
 
-    // Move to the first line of the next paragraph
     if (currentLine < this.input.length - 1) {
       currentLine++;
     }
@@ -335,16 +392,11 @@ class Breezeread extends LitElement {
   }
 
   onClear() {
-    // localStorage.text = "";
-    // sessionStorage.currentLine = 0;
-    // this.currentLine = 0;
-    // this.input = [];
     this.showInputForm = true;
     this.mode = "keyboard";
     this.updateComplete.then(() => {
-      const textarea = this.shadowRoot.querySelector('textarea');
+      const textarea = this.shadowRoot.querySelector("textarea");
       if (textarea) {
-        // debugger
         textarea.select();
       }
     });
@@ -369,25 +421,21 @@ class Breezeread extends LitElement {
     }
   }
 
-  prepare(text) {
-    return text
-      .trim()
-      .split("\n")
-      .reduce((state, line) => state.concat(wrapText(line, 40).split("\n")), [])
-      .join("\n");
-  }
-
   render() {
-    const lines = this.input.map(
-      (line, index) => html`
+    const lines = this.input.map((line, index) => {
+      const isParagraphStart =
+        line.length > 0 && (index === 0 || this.input[index - 1] === "");
+      return html`
         <div
-          class="line ${index === this.currentLine ? "active" : ""}"
+          class="line ${index === this.currentLine
+            ? "active"
+            : ""} ${isParagraphStart ? "paragraph-start" : ""}"
           @click="${() => line.length && this.selectLine(index)}"
         >
           <span>${line}</span>
         </div>
-      `
-    );
+      `;
+    });
 
     return html`
       <div class="app">
