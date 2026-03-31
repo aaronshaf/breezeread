@@ -52,16 +52,23 @@ function isSpaceSegment(text) {
 }
 
 function hyphenateWord(word) {
-  const lower = word.toLowerCase().replace(/[.,;:!?"'\u2014\u2013-]/g, "");
-  if (lower.length < 5) return [word];
+  // Don't hyphenate contractions or possessives
+  if (/['\u2019]/.test(word)) return [word];
+
+  const lower = word.toLowerCase().replace(/[.,;:!?"\u2014\u2013-]/g, "");
+  if (lower.length < 6) return [word];
 
   for (const prefix of PREFIXES) {
-    if (lower.startsWith(prefix) && lower.length - prefix.length >= 3) {
+    // Only use prefixes of 3+ chars to avoid false matches (co-, de-, re-, etc.)
+    if (prefix.length < 3) continue;
+    if (lower.startsWith(prefix) && lower.length - prefix.length >= 4) {
       return [word.slice(0, prefix.length), word.slice(prefix.length)];
     }
   }
   for (const suffix of SUFFIXES) {
-    if (lower.endsWith(suffix) && lower.length - suffix.length >= 3) {
+    // Only use suffixes of 3+ chars
+    if (suffix.length < 3) continue;
+    if (lower.endsWith(suffix) && lower.length - suffix.length >= 4) {
       const cut = word.length - suffix.length;
       return [word.slice(0, cut), word.slice(cut)];
     }
@@ -384,21 +391,31 @@ class Breezeread extends LitElement {
   }
 
   firstUpdated() {
-    this._measureAndRewrap();
+    // Delay initial measurement one frame to let the layout settle
+    requestAnimationFrame(() => this._measureAndRewrap());
 
-    // Re-wrap whenever the column width changes (window resize, zoom, etc.)
-    this._resizeObserver = new ResizeObserver(() => this._measureAndRewrap());
+    // Debounce ResizeObserver — KP layout is expensive and causes its own
+    // DOM changes which would re-fire the observer without debouncing
+    this._resizeTimer = null;
+    this._resizeObserver = new ResizeObserver(() => {
+      clearTimeout(this._resizeTimer);
+      this._resizeTimer = setTimeout(() => this._measureAndRewrap(), 200);
+    });
     const desk = this.shadowRoot.querySelector(".desk");
     if (desk) this._resizeObserver.observe(desk);
   }
 
   _measureAndRewrap() {
+    if (this._rewrapping) return;
     const lineEl = this.shadowRoot.querySelector(".line");
     if (!lineEl) return;
     const actualWidth = lineEl.getBoundingClientRect().width - LINE_PADDING_PX;
-    if (actualWidth > 0 && Math.abs(actualWidth - this.columnContentWidth) > 10) {
+    if (actualWidth > 0 && Math.abs(actualWidth - this.columnContentWidth) > 20) {
+      this._rewrapping = true;
       this.columnContentWidth = actualWidth;
       this.input = this._prepareLines(localStorage.text || "");
+      // Clear the guard after layout has settled
+      setTimeout(() => { this._rewrapping = false; }, 300);
     }
   }
 
