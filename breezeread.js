@@ -52,16 +52,23 @@ function isSpaceSegment(text) {
 }
 
 function hyphenateWord(word) {
-  const lower = word.toLowerCase().replace(/[.,;:!?"'\u2014\u2013-]/g, "");
-  if (lower.length < 5) return [word];
+  // Don't hyphenate contractions or possessives
+  if (/['\u2019]/.test(word)) return [word];
+
+  const lower = word.toLowerCase().replace(/[.,;:!?"\u2014\u2013-]/g, "");
+  if (lower.length < 6) return [word];
 
   for (const prefix of PREFIXES) {
-    if (lower.startsWith(prefix) && lower.length - prefix.length >= 3) {
+    // Only use prefixes of 3+ chars to avoid false matches (co-, de-, re-, etc.)
+    if (prefix.length < 3) continue;
+    if (lower.startsWith(prefix) && lower.length - prefix.length >= 4) {
       return [word.slice(0, prefix.length), word.slice(prefix.length)];
     }
   }
   for (const suffix of SUFFIXES) {
-    if (lower.endsWith(suffix) && lower.length - suffix.length >= 3) {
+    // Only use suffixes of 3+ chars
+    if (suffix.length < 3) continue;
+    if (lower.endsWith(suffix) && lower.length - suffix.length >= 4) {
       const cut = word.length - suffix.length;
       return [word.slice(0, cut), word.slice(cut)];
     }
