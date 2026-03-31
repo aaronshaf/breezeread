@@ -391,21 +391,31 @@ class Breezeread extends LitElement {
   }
 
   firstUpdated() {
-    this._measureAndRewrap();
+    // Delay initial measurement one frame to let the layout settle
+    requestAnimationFrame(() => this._measureAndRewrap());
 
-    // Re-wrap whenever the column width changes (window resize, zoom, etc.)
-    this._resizeObserver = new ResizeObserver(() => this._measureAndRewrap());
+    // Debounce ResizeObserver — KP layout is expensive and causes its own
+    // DOM changes which would re-fire the observer without debouncing
+    this._resizeTimer = null;
+    this._resizeObserver = new ResizeObserver(() => {
+      clearTimeout(this._resizeTimer);
+      this._resizeTimer = setTimeout(() => this._measureAndRewrap(), 200);
+    });
     const desk = this.shadowRoot.querySelector(".desk");
     if (desk) this._resizeObserver.observe(desk);
   }
 
   _measureAndRewrap() {
+    if (this._rewrapping) return;
     const lineEl = this.shadowRoot.querySelector(".line");
     if (!lineEl) return;
     const actualWidth = lineEl.getBoundingClientRect().width - LINE_PADDING_PX;
-    if (actualWidth > 0 && Math.abs(actualWidth - this.columnContentWidth) > 10) {
+    if (actualWidth > 0 && Math.abs(actualWidth - this.columnContentWidth) > 20) {
+      this._rewrapping = true;
       this.columnContentWidth = actualWidth;
       this.input = this._prepareLines(localStorage.text || "");
+      // Clear the guard after layout has settled
+      setTimeout(() => { this._rewrapping = false; }, 300);
     }
   }
 
