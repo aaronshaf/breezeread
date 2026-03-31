@@ -127,14 +127,6 @@ class Breezeread extends LitElement {
       cursor: none;
     }
 
-    /* Initial cap for paragraph starts in all-mode */
-    .all-mode .line.paragraph-start .initial-cap {
-      display: inline-block;
-      font-size: 2.8em;
-      line-height: 0.85;
-      vertical-align: -0.55em;
-      margin-right: 2px;
-    }
   `;
 
   static properties = {
@@ -430,20 +422,12 @@ class Breezeread extends LitElement {
 
   render() {
     const lines = this.input.map((line, index) => {
-      const isParagraphStart =
-        line.length > 0 && (index === 0 || this.input[index - 1] === "");
-      const content =
-        isParagraphStart && line.length > 1
-          ? html`<span class="initial-cap">${line[0]}</span>${line.slice(1)}`
-          : line;
       return html`
         <div
-          class="line ${index === this.currentLine
-            ? "active"
-            : ""} ${isParagraphStart ? "paragraph-start" : ""}"
+          class="line ${index === this.currentLine ? "active" : ""}"
           @click="${() => line.length && this.selectLine(index)}"
         >
-          <span>${content}</span>
+          <span>${line}</span>
         </div>
       `;
     });
