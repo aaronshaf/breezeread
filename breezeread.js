@@ -146,6 +146,14 @@ class Breezeread extends LitElement {
     super();
     this.lastAction = "next";
     this.mode = "all";
+
+    // v2: text is stored raw (unwrapped). Clear old pre-wrapped text so
+    // users aren't stuck with orphan lines from the old format.
+    if (localStorage.getItem("textVersion") !== "2") {
+      localStorage.removeItem("text");
+      localStorage.setItem("textVersion", "2");
+    }
+
     this.showInputForm =
       localStorage.text == null || localStorage.text.trim().length < 2;
     this.fontIndex = parseInt(localStorage.getItem("fontIndex"), 10) || 0;
