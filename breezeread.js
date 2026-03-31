@@ -127,14 +127,6 @@ class Breezeread extends LitElement {
       cursor: none;
     }
 
-    /* Drop cap for the first letter of each paragraph in all-mode */
-    .all-mode .line.paragraph-start > span::first-letter {
-      float: left;
-      font-size: 3em;
-      line-height: 0.82;
-      padding-right: 5px;
-      padding-top: 3px;
-    }
   `;
 
   static properties = {
@@ -147,6 +139,7 @@ class Breezeread extends LitElement {
     fontIndex: { type: Number },
     lastKeyPressed: { type: String },
     columnContentWidth: { type: Number },
+    lineWidths: { type: Array },
   };
 
   constructor() {
@@ -158,6 +151,7 @@ class Breezeread extends LitElement {
     this.fontIndex = parseInt(localStorage.getItem("fontIndex"), 10) || 0;
     document.body.style.fontFamily = fonts[this.fontIndex];
     this.columnContentWidth = this._defaultColumnWidth();
+    this.lineWidths = [];
     this.input = this._prepareLines(localStorage.text || "");
     this.currentLine = parseInt(sessionStorage.currentLine, 10) || 0;
     this.isRevealing = false;
@@ -172,19 +166,26 @@ class Breezeread extends LitElement {
 
   disconnectedCallback() {
     document.removeEventListener("keydown", this.handleKeyPress);
+    this._resizeObserver?.disconnect();
     super.disconnectedCallback();
   }
 
   firstUpdated() {
-    // Measure the actual rendered column width and re-wrap if it differs
-    // meaningfully from our CSS-computed default
+    this._measureAndRewrap();
+
+    // Re-wrap whenever the column width changes (window resize, zoom, etc.)
+    this._resizeObserver = new ResizeObserver(() => this._measureAndRewrap());
+    const desk = this.shadowRoot.querySelector(".desk");
+    if (desk) this._resizeObserver.observe(desk);
+  }
+
+  _measureAndRewrap() {
     const lineEl = this.shadowRoot.querySelector(".line");
-    if (lineEl) {
-      const actualWidth = lineEl.getBoundingClientRect().width - LINE_PADDING_PX;
-      if (actualWidth > 0 && Math.abs(actualWidth - this.columnContentWidth) > 20) {
-        this.columnContentWidth = actualWidth;
-        this.input = this._prepareLines(localStorage.text || "");
-      }
+    if (!lineEl) return;
+    const actualWidth = lineEl.getBoundingClientRect().width - LINE_PADDING_PX;
+    if (actualWidth > 0 && Math.abs(actualWidth - this.columnContentWidth) > 10) {
+      this.columnContentWidth = actualWidth;
+      this.input = this._prepareLines(localStorage.text || "");
     }
   }
 
@@ -218,7 +219,10 @@ class Breezeread extends LitElement {
   }
 
   _prepareLines(text) {
-    if (!text || !text.trim()) return [];
+    if (!text || !text.trim()) {
+      this.lineWidths = [];
+      return [];
+    }
     const font = this._getFontString();
     const width = this.columnContentWidth || this._defaultColumnWidth();
     const rootFontSize =
@@ -226,32 +230,40 @@ class Breezeread extends LitElement {
     const lineHeight = LINE_HEIGHT_REM * rootFontSize;
 
     const result = [];
+    const widths = [];
+
     for (const paragraph of text.trim().split("\n")) {
       if (paragraph.trim() === "") {
         result.push("");
+        widths.push(null);
         continue;
       }
       try {
         const prepared = pretextPrepare(paragraph, font);
         const { lines } = layoutWithLines(prepared, width, lineHeight);
-        for (const line of lines) {
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
           result.push(line.text ?? line);
+          // Last line of paragraph stays ragged; others get width for justification
+          widths.push(i < lines.length - 1 ? (line.width ?? null) : null);
         }
       } catch {
-        // Fallback: simple character-count word wrap
+        // Fallback: simple character-count word wrap (no justification data)
         const words = paragraph.split(" ");
         let current = "";
         for (const word of words) {
           if (current.length + word.length + 1 <= 40) {
             current += (current ? " " : "") + word;
           } else {
-            if (current) result.push(current);
+            if (current) { result.push(current); widths.push(null); }
             current = word;
           }
         }
-        if (current) result.push(current);
+        if (current) { result.push(current); widths.push(null); }
       }
     }
+
+    this.lineWidths = widths;
     return result;
   }
 
@@ -421,15 +433,24 @@ class Breezeread extends LitElement {
     }
   }
 
+  _wordSpacing(index) {
+    const naturalWidth = this.lineWidths?.[index];
+    if (!naturalWidth) return 0;
+    const colWidth = this.columnContentWidth || this._defaultColumnWidth();
+    const spaceCount = (this.input[index].match(/ /g) || []).length;
+    if (spaceCount === 0) return 0;
+    // Only justify if the line fills at least 60% of the column
+    if (naturalWidth < colWidth * 0.6) return 0;
+    return (colWidth - naturalWidth) / spaceCount;
+  }
+
   render() {
     const lines = this.input.map((line, index) => {
-      const isParagraphStart =
-        line.length > 0 && (index === 0 || this.input[index - 1] === "");
+      const ws = this._wordSpacing(index);
       return html`
         <div
-          class="line ${index === this.currentLine
-            ? "active"
-            : ""} ${isParagraphStart ? "paragraph-start" : ""}"
+          class="line ${index === this.currentLine ? "active" : ""}"
+          style="${ws ? `word-spacing: ${ws.toFixed(2)}px` : ""}"
           @click="${() => line.length && this.selectLine(index)}"
         >
           <span>${line}</span>
