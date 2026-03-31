@@ -5,6 +5,7 @@ import {
 } from "https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js";
 import {
   prepare as pretextPrepare,
+  prepareWithSegments,
   layoutWithLines,
 } from "https://esm.sh/@chenglou/pretext";
 
@@ -21,6 +22,211 @@ const COLUMN_WIDTH_REM = 20;
 const LINE_PADDING_PX = 32;
 const FONT_SIZE_REM = 1.1;
 const LINE_HEIGHT_REM = 1.4;
+
+// ── Knuth-Plass constants (ported from chenglou/pretext demo) ────────────────
+const SOFT_HYPHEN = "\u00AD";
+const HUGE_BADNESS = 1e8;
+const SHORT_LINE_RATIO = 0.6;
+const RIVER_THRESHOLD = 1.5;
+const INFEASIBLE_SPACE_RATIO = 0.4;
+const TIGHT_SPACE_RATIO = 0.65;
+
+const PREFIXES = [
+  "anti", "auto", "be", "bi", "co", "com", "con", "contra", "counter", "de",
+  "dis", "en", "em", "ex", "extra", "fore", "hyper", "il", "im", "in", "inter",
+  "intra", "ir", "macro", "mal", "micro", "mid", "mis", "mono", "multi", "non",
+  "omni", "out", "over", "para", "poly", "post", "pre", "pro", "pseudo",
+  "quasi", "re", "retro", "semi", "sub", "super", "sur", "syn", "tele", "trans",
+  "tri", "ultra", "un", "under",
+];
+
+const SUFFIXES = [
+  "able", "ible", "tion", "sion", "ment", "ness", "ous", "ious", "eous", "ful",
+  "less", "ive", "ative", "itive", "al", "ial", "ical", "ing", "ling",
+  "ed", "er", "est", "ism", "ist", "ity", "ety", "ty", "ence", "ance", "ly",
+  "fy", "ify", "ize", "ise", "ure", "ture",
+];
+
+function isSpaceSegment(text) {
+  return text.trim().length === 0;
+}
+
+function hyphenateWord(word) {
+  const lower = word.toLowerCase().replace(/[.,;:!?"'\u2014\u2013-]/g, "");
+  if (lower.length < 5) return [word];
+
+  for (const prefix of PREFIXES) {
+    if (lower.startsWith(prefix) && lower.length - prefix.length >= 3) {
+      return [word.slice(0, prefix.length), word.slice(prefix.length)];
+    }
+  }
+  for (const suffix of SUFFIXES) {
+    if (lower.endsWith(suffix) && lower.length - suffix.length >= 3) {
+      const cut = word.length - suffix.length;
+      return [word.slice(0, cut), word.slice(cut)];
+    }
+  }
+  return [word];
+}
+
+function hyphenateParagraph(paragraph) {
+  return paragraph.split(/(\s+)/).map((token) => {
+    if (/^\s+$/.test(token)) return token;
+    const parts = hyphenateWord(token);
+    return parts.length <= 1 ? token : parts.join(SOFT_HYPHEN);
+  }).join("");
+}
+
+function getLineStats(segments, widths, candidates, from, to, hyphenWidth, normalSpaceWidth) {
+  const fromIdx = candidates[from].segIndex;
+  const toIdx = candidates[to].segIndex;
+  const trailingMarker = candidates[to].kind === "soft-hyphen" ? "soft-hyphen" : "none";
+
+  let wordWidth = 0, spaceCount = 0;
+  for (let i = fromIdx; i < toIdx; i++) {
+    const t = segments[i];
+    if (t === SOFT_HYPHEN) continue;
+    if (isSpaceSegment(t)) { spaceCount++; continue; }
+    wordWidth += widths[i];
+  }
+  // Trim trailing space
+  if (toIdx > fromIdx && isSpaceSegment(segments[toIdx - 1])) spaceCount--;
+  if (trailingMarker === "soft-hyphen") wordWidth += hyphenWidth;
+
+  return {
+    wordWidth,
+    spaceCount,
+    naturalWidth: wordWidth + spaceCount * normalSpaceWidth,
+    trailingMarker,
+  };
+}
+
+function lineBadness(stats, maxWidth, normalSpaceWidth, isLastLine) {
+  if (isLastLine) return stats.wordWidth > maxWidth ? HUGE_BADNESS : 0;
+
+  if (stats.spaceCount <= 0) {
+    const slack = maxWidth - stats.wordWidth;
+    return slack < 0 ? HUGE_BADNESS : slack * slack * 10;
+  }
+
+  const justifiedSpace = (maxWidth - stats.wordWidth) / stats.spaceCount;
+  if (justifiedSpace < 0) return HUGE_BADNESS;
+  if (justifiedSpace < normalSpaceWidth * INFEASIBLE_SPACE_RATIO) return HUGE_BADNESS;
+
+  const ratio = (justifiedSpace - normalSpaceWidth) / normalSpaceWidth;
+  const a = Math.abs(ratio);
+  const badness = a * a * a * 1000;
+
+  const riverExcess = justifiedSpace / normalSpaceWidth - RIVER_THRESHOLD;
+  const riverPenalty = riverExcess > 0 ? 5000 + riverExcess * riverExcess * 10000 : 0;
+
+  const tightThreshold = normalSpaceWidth * TIGHT_SPACE_RATIO;
+  const tightPenalty = justifiedSpace < tightThreshold
+    ? 3000 + (tightThreshold - justifiedSpace) * (tightThreshold - justifiedSpace) * 10000
+    : 0;
+
+  const hyphenPenalty = stats.trailingMarker === "soft-hyphen" ? 50 : 0;
+  return badness + riverPenalty + tightPenalty + hyphenPenalty;
+}
+
+function buildLineFromRange(prepared, candidates, from, to, maxWidth, hyphenWidth, normalSpaceWidth) {
+  const fromIdx = candidates[from].segIndex;
+  const toIdx = candidates[to].segIndex;
+  const ending = candidates[to].kind === "end" ? "paragraph-end" : "wrap";
+  const trailingMarker = candidates[to].kind === "soft-hyphen" ? "soft-hyphen" : "none";
+
+  const segs = [];
+  for (let i = fromIdx; i < toIdx; i++) {
+    const t = prepared.segments[i];
+    if (t === SOFT_HYPHEN) continue;
+    segs.push(isSpaceSegment(t)
+      ? { kind: "space", width: prepared.widths[i] }
+      : { kind: "text", text: t, width: prepared.widths[i] });
+  }
+  if (trailingMarker === "soft-hyphen" && ending === "wrap") {
+    segs.push({ kind: "text", text: "-", width: hyphenWidth });
+  }
+  // Trim trailing spaces
+  while (segs.length > 0 && segs[segs.length - 1].kind === "space") segs.pop();
+
+  let wordWidth = 0, spaceCount = 0, naturalWidth = 0;
+  for (const s of segs) {
+    naturalWidth += s.width;
+    if (s.kind === "space") spaceCount++;
+    else wordWidth += s.width;
+  }
+
+  const text = segs.map((s) => (s.kind === "text" ? s.text : " ")).join("");
+
+  // Compute CSS word-spacing: extra px per inter-word gap
+  let wordSpacing = null;
+  if (ending !== "paragraph-end" && spaceCount > 0 && naturalWidth >= maxWidth * SHORT_LINE_RATIO) {
+    const rawJustifiedSpace = (maxWidth - wordWidth) / spaceCount;
+    wordSpacing = rawJustifiedSpace - normalSpaceWidth;
+  }
+
+  return { text, wordSpacing };
+}
+
+function layoutParagraphKnuthPlass(prepared, maxWidth, normalSpaceWidth, hyphenWidth) {
+  const { segments, widths } = prepared;
+  const n = segments.length;
+  if (n === 0) return [];
+
+  // Build break candidates
+  const candidates = [{ segIndex: 0, kind: "start" }];
+  for (let i = 0; i < n; i++) {
+    const t = segments[i];
+    if (t === SOFT_HYPHEN) {
+      if (i + 1 < n) candidates.push({ segIndex: i + 1, kind: "soft-hyphen" });
+      continue;
+    }
+    if (isSpaceSegment(t) && i + 1 < n) {
+      candidates.push({ segIndex: i + 1, kind: "space" });
+    }
+  }
+  candidates.push({ segIndex: n, kind: "end" });
+
+  const N = candidates.length;
+  const dp = new Array(N).fill(Infinity);
+  const prev = new Array(N).fill(-1);
+  dp[0] = 0;
+
+  for (let to = 1; to < N; to++) {
+    const isLastLine = candidates[to].kind === "end";
+    for (let from = to - 1; from >= 0; from--) {
+      if (dp[from] === Infinity) continue;
+      const stats = getLineStats(segments, widths, candidates, from, to, hyphenWidth, normalSpaceWidth);
+      if (stats.naturalWidth > maxWidth * 2) break;
+      const cost = dp[from] + lineBadness(stats, maxWidth, normalSpaceWidth, isLastLine);
+      if (cost < dp[to]) {
+        dp[to] = cost;
+        prev[to] = from;
+      }
+    }
+  }
+
+  // Backtrack
+  const breakAt = [];
+  let cur = N - 1;
+  while (cur > 0) {
+    if (prev[cur] === -1) { cur--; continue; }
+    breakAt.push(cur);
+    cur = prev[cur];
+  }
+  breakAt.reverse();
+
+  // Build lines
+  const lines = [];
+  let fromCandidate = 0;
+  for (const toCandidate of breakAt) {
+    lines.push(buildLineFromRange(prepared, candidates, fromCandidate, toCandidate, maxWidth, hyphenWidth, normalSpaceWidth));
+    fromCandidate = toCandidate;
+  }
+  return lines;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 class Breezeread extends LitElement {
   static styles = css`
@@ -126,7 +332,6 @@ class Breezeread extends LitElement {
     .keyboard-mode .line {
       cursor: none;
     }
-
   `;
 
   static properties = {
@@ -139,7 +344,7 @@ class Breezeread extends LitElement {
     fontIndex: { type: Number },
     lastKeyPressed: { type: String },
     columnContentWidth: { type: Number },
-    lineWidths: { type: Array },
+    lineWordSpacings: { type: Array },
   };
 
   constructor() {
@@ -159,7 +364,7 @@ class Breezeread extends LitElement {
     this.fontIndex = parseInt(localStorage.getItem("fontIndex"), 10) || 0;
     document.body.style.fontFamily = fonts[this.fontIndex];
     this.columnContentWidth = this._defaultColumnWidth();
-    this.lineWidths = [];
+    this.lineWordSpacings = [];
     this.input = this._prepareLines(localStorage.text || "");
     this.currentLine = parseInt(sessionStorage.currentLine, 10) || 0;
     this.isRevealing = false;
@@ -226,52 +431,61 @@ class Breezeread extends LitElement {
     return `${fontSize}px ${fonts[this.fontIndex]}`;
   }
 
+  _measureSpaceWidths() {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    ctx.font = this._getFontString();
+    return {
+      normalSpaceWidth: ctx.measureText(" ").width,
+      hyphenWidth: ctx.measureText("-").width,
+    };
+  }
+
   _prepareLines(text) {
     if (!text || !text.trim()) {
-      this.lineWidths = [];
+      this.lineWordSpacings = [];
       return [];
     }
     const font = this._getFontString();
-    const width = this.columnContentWidth || this._defaultColumnWidth();
-    const rootFontSize =
-      parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-    const lineHeight = LINE_HEIGHT_REM * rootFontSize;
+    const maxWidth = this.columnContentWidth || this._defaultColumnWidth();
+    const { normalSpaceWidth, hyphenWidth } = this._measureSpaceWidths();
 
     const result = [];
-    const widths = [];
+    const spacings = [];
 
     for (const paragraph of text.trim().split("\n")) {
       if (paragraph.trim() === "") {
         result.push("");
-        widths.push(null);
+        spacings.push(null);
         continue;
       }
       try {
-        const prepared = pretextPrepare(paragraph, font);
-        const { lines } = layoutWithLines(prepared, width, lineHeight);
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i];
-          result.push(line.text ?? line);
-          // Last line of paragraph stays ragged; others get width for justification
-          widths.push(i < lines.length - 1 ? (line.width ?? null) : null);
+        const hyphenated = hyphenateParagraph(paragraph);
+        const prepared = prepareWithSegments(hyphenated, font);
+        const lines = layoutParagraphKnuthPlass(prepared, maxWidth, normalSpaceWidth, hyphenWidth);
+        for (const line of lines) {
+          result.push(line.text);
+          spacings.push(line.wordSpacing);
         }
       } catch {
-        // Fallback: simple character-count word wrap (no justification data)
-        const words = paragraph.split(" ");
-        let current = "";
-        for (const word of words) {
-          if (current.length + word.length + 1 <= 40) {
-            current += (current ? " " : "") + word;
-          } else {
-            if (current) { result.push(current); widths.push(null); }
-            current = word;
+        // Fallback to greedy layout without justification
+        try {
+          const rootFontSize =
+            parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+          const prepared = pretextPrepare(paragraph, font);
+          const { lines } = layoutWithLines(prepared, maxWidth, LINE_HEIGHT_REM * rootFontSize);
+          for (let i = 0; i < lines.length; i++) {
+            result.push(lines[i].text ?? lines[i]);
+            spacings.push(null);
           }
+        } catch {
+          result.push(paragraph);
+          spacings.push(null);
         }
-        if (current) { result.push(current); widths.push(null); }
       }
     }
 
-    this.lineWidths = widths;
+    this.lineWordSpacings = spacings;
     return result;
   }
 
@@ -295,7 +509,6 @@ class Breezeread extends LitElement {
       this.fontIndex = (this.fontIndex + 1) % fonts.length;
       document.body.style.fontFamily = fonts[this.fontIndex];
       localStorage.setItem("fontIndex", this.fontIndex);
-      // Re-wrap with new font metrics
       this.input = this._prepareLines(localStorage.text || "");
     } else if (event.key === "g") {
       if (this.lastKeyPressed === "g") {
@@ -315,8 +528,6 @@ class Breezeread extends LitElement {
     if (textarea.value.trim().length === 0) {
       return;
     }
-    // Store original text (not pre-wrapped) so it can be re-wrapped
-    // accurately when the font or column width changes
     localStorage.text = textarea.value;
     sessionStorage.currentLine = 0;
     this.showInputForm = false;
@@ -363,11 +574,9 @@ class Breezeread extends LitElement {
     while (currentLine > 0 && this.input[currentLine - 1] !== "") {
       currentLine--;
     }
-
     while (currentLine > 0 && this.input[currentLine - 1] === "") {
       currentLine--;
     }
-
     while (currentLine > 0 && this.input[currentLine - 1] !== "") {
       currentLine--;
     }
@@ -382,9 +591,7 @@ class Breezeread extends LitElement {
   handleNextParagraph() {
     let currentLine = this.currentLine;
 
-    if (currentLine >= this.input.length - 1) {
-      return;
-    }
+    if (currentLine >= this.input.length - 1) return;
 
     while (
       currentLine < this.input.length - 1 &&
@@ -392,14 +599,12 @@ class Breezeread extends LitElement {
     ) {
       currentLine++;
     }
-
     while (
       currentLine < this.input.length - 1 &&
       this.input[currentLine + 1] === ""
     ) {
       currentLine++;
     }
-
     if (currentLine < this.input.length - 1) {
       currentLine++;
     }
@@ -441,24 +646,13 @@ class Breezeread extends LitElement {
     }
   }
 
-  _wordSpacing(index) {
-    const naturalWidth = this.lineWidths?.[index];
-    if (!naturalWidth) return 0;
-    const colWidth = this.columnContentWidth || this._defaultColumnWidth();
-    const spaceCount = (this.input[index].match(/ /g) || []).length;
-    if (spaceCount === 0) return 0;
-    // Only justify if the line fills at least 60% of the column
-    if (naturalWidth < colWidth * 0.6) return 0;
-    return (colWidth - naturalWidth) / spaceCount;
-  }
-
   render() {
     const lines = this.input.map((line, index) => {
-      const ws = this._wordSpacing(index);
+      const ws = this.lineWordSpacings?.[index];
       return html`
         <div
           class="line ${index === this.currentLine ? "active" : ""}"
-          style="${ws ? `word-spacing: ${ws.toFixed(2)}px` : ""}"
+          style="${ws != null ? `word-spacing: ${ws.toFixed(2)}px` : ""}"
           @click="${() => line.length && this.selectLine(index)}"
         >
           <span>${line}</span>
